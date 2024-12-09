@@ -1,0 +1,67 @@
+{
+  "name": "node-package-version-diff",
+  "version": "0.1.0",
+  "description": "Identify version differences between node package lockfile revisions",
+  "type": "module",
+  "scripts": {
+    "build": "npm run lint && npm run compile && publint",
+    "compile": "tsup",
+    "compile:debug": "tsup --env.dev true",
+    "format": "prettier --write .",
+    "lint": "eslint .",
+    "clean": "rimraf dist"
+  },
+  "engines": {
+    "node": ">= 20"
+  },
+  "main": "./dist/index.cjs",
+  "exports": {
+    "require": "./dist/index.cjs",
+    "import": "./dist/index.js"
+  },
+  "bin": {
+    "npvd": "dist/cli.js"
+  },
+  "files": [
+    "/dist"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mdmower/node-package-version-diff.git"
+  },
+  "keywords": [
+    "version",
+    "diff",
+    "package",
+    "npm",
+    "pnpm"
+  ],
+  "author": "Matt Mower <mdmower@cmphys.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/mdmower/node-package-version-diff/issues"
+  },
+  "homepage": "https://github.com/mdmower/node-package-version-diff#readme",
+  "dependencies": {
+    "@pnpm/lockfile.fs": "^1001.1.1",
+    "@pnpm/lockfile.utils": "^1001.0.1",
+    "@pnpm/lockfile.walker": "^1001.0.1",
+    "commander": "^13.0.0",
+    "csv-stringify": "^6.5.2"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.18.0",
+    "@types/eslint__js": "^8.42.3",
+    "@types/node": "^20.17.12",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-prettier": "^5.2.1",
+    "globals": "^15.14.0",
+    "prettier": "^3.4.2",
+    "publint": "^0.3.1",
+    "rimraf": "^6.0.1",
+    "tsup": "^8.3.5",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3",
+    "typescript-eslint": "^8.19.1"
+  }
+}

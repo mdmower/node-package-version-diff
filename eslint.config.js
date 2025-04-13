@@ -29,19 +29,11 @@ export default tseslint.config(
     languageOptions: {
       parserOptions: {
         sourceType: 'module',
-        project: true,
+        projectService: true,
       },
     },
     rules: {
       '@typescript-eslint/no-inferrable-types': 'off',
-    },
-  },
-  {
-    files: ['**/*.test.ts', 'src/cli.ts'],
-    languageOptions: {
-      parserOptions: {
-        project: 'tsconfig.dev.json',
-      },
     },
   },
   {

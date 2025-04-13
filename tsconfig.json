@@ -3,13 +3,11 @@
     "lib": ["ES2023"],
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
-    "target": "ES2023",
+    "target": "ES2022",
     "strict": true,
     "esModuleInterop": true,
     "outDir": "dist",
     "sourceMap": false,
     "declaration": true
-  },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules"]
+  }
 }

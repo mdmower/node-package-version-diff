@@ -5,7 +5,14 @@ import {exec} from 'node:child_process';
 import {isNpmLockFileV3, NpmLockFileV3} from './utils.js';
 import {lockfileWalker, LockfileWalkerStep} from '@pnpm/lockfile.walker';
 import {LockfileObject, readWantedLockfile} from '@pnpm/lockfile.fs';
-import {ProjectId} from '@pnpm/lockfile.utils';
+import {
+  lockfileWalker as lockfileWalkerV6,
+  LockfileWalkerStep as LockfileWalkerStepV6,
+} from '@pnpm/lockfile-walker';
+import {
+  Lockfile as LockfileV6,
+  readWantedLockfile as readWantedLockfileV6,
+} from '@pnpm/lockfile-file';
 import {dirname, join as pathJoin} from 'node:path';
 import {mkdtemp} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
@@ -116,19 +123,19 @@ function diffNpmLockFileV3(
 }
 
 function diffPnpmLockFile(
-  from: LockfileObject,
-  to: LockfileObject,
+  from: LockfileObject | LockfileV6,
+  to: LockfileObject | LockfileV6,
   options: Options
 ): ConsolidatedDiff {
   const {directOnly} = options;
   const includeTypes = filterTypes(options);
 
-  const readVersions = (lockFile: LockfileObject) => {
-    // TODO: Multiple project support
-    // const projectIds = Object.keys(lockFile.importers) as ProjectId[];
-    // for (const projectId of projectIds) {}
+  const readVersions = (lockFile: LockfileObject | LockfileV6) => {
+    const projectIds = Object.keys(lockFile.importers) as (keyof typeof lockFile.importers)[];
 
-    const walker = lockfileWalker(lockFile, ['.' as ProjectId], {
+    const lockfileWalkerFn =
+      parseFloat(lockFile.lockfileVersion) < 7 ? lockfileWalkerV6 : lockfileWalker;
+    const walker = lockfileWalkerFn(lockFile, projectIds, {
       include: {
         dependencies: includeTypes.includes('prod'),
         devDependencies: includeTypes.includes('dev'),
@@ -137,7 +144,7 @@ function diffPnpmLockFile(
     });
 
     const diffItems: ConsolidatedDiffItem[] = [];
-    const walk = (step: LockfileWalkerStep, root: string[]) => {
+    const walk = (step: LockfileWalkerStep | LockfileWalkerStepV6, root: string[]) => {
       for (const lockDep of step.dependencies) {
         const nameVersion = lockDep.depPath.toString().replace(/\(.+/, '');
         const idx = nameVersion.lastIndexOf('@');
@@ -195,19 +202,44 @@ export async function diffPackages(
       await writeFile(fromLockFilePath, fromDoc, 'utf-8');
       await writeFile(toLockFilePath, toDoc, 'utf-8');
 
-      const fromLockFile = await readWantedLockfile(dirname(fromLockFilePath), {
-        ignoreIncompatible: false,
-        useGitBranchLockfile: false,
-      });
-      const toLockFile = await readWantedLockfile(dirname(toLockFilePath), {
-        ignoreIncompatible: false,
-        useGitBranchLockfile: false,
-      });
+      let fromLockFile: LockfileObject | LockfileV6 | null = await readWantedLockfile(
+        dirname(fromLockFilePath),
+        {
+          ignoreIncompatible: false,
+          useGitBranchLockfile: false,
+        }
+      );
       if (!fromLockFile) {
         throw new Error("Could not parse 'from' pnpm package lock file");
       }
+      if (parseFloat(fromLockFile.lockfileVersion) < 7) {
+        fromLockFile = await readWantedLockfileV6(dirname(fromLockFilePath), {
+          ignoreIncompatible: false,
+          useGitBranchLockfile: false,
+        });
+        if (!fromLockFile) {
+          throw new Error("Could not parse 'from' pnpm package lock file V6");
+        }
+      }
+
+      let toLockFile: LockfileObject | LockfileV6 | null = await readWantedLockfile(
+        dirname(toLockFilePath),
+        {
+          ignoreIncompatible: false,
+          useGitBranchLockfile: false,
+        }
+      );
       if (!toLockFile) {
         throw new Error("Could not parse 'to' pnpm package lock file");
+      }
+      if (parseFloat(toLockFile.lockfileVersion) < 7) {
+        toLockFile = await readWantedLockfileV6(dirname(toLockFilePath), {
+          ignoreIncompatible: false,
+          useGitBranchLockfile: false,
+        });
+        if (!toLockFile) {
+          throw new Error("Could not parse 'to' pnpm package lock file V6");
+        }
       }
 
       diff = diffPnpmLockFile(fromLockFile, toLockFile, options);

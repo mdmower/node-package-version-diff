@@ -15,22 +15,22 @@ export async function formatDiff(
   if (format === 'text') {
     return changes
       .map((change) => {
-        const textPath = change.path.join(' > ');
+        const textPath = change.path.length > 1 ? ` [${change.path.join(' > ')}]` : '';
         const textVersion = `${change.version.from ?? '(added)'} -> ${change.version.to ?? '(removed)'}`;
-        return `${textPath}: ${textVersion}`;
+        return `${change.name}${textPath}: ${textVersion}`;
       })
       .join('\n');
   } else if (format === 'csv') {
     const records = changes.map((change) => [
-      change.path.join(' > '),
       change.name,
+      change.path.join(' > '),
       change.version.from ?? '',
       change.version.to ?? '',
     ]);
     return new Promise((resolve, reject) =>
       csvStringify(
         records,
-        {columns: ['path', 'name', 'from version', 'to version'], header: true},
+        {columns: ['name', 'path', 'from version', 'to version'], header: true},
         (err, output) => (err ? reject(err) : resolve(output))
       )
     );

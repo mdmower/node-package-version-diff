@@ -284,5 +284,7 @@ export async function diffPackages(
     });
   }
 
-  return changes.sort((a, b) => a.name.localeCompare(b.name));
+  return changes.sort(
+    (a, b) => a.name.localeCompare(b.name) || a.path.join('|').localeCompare(b.path.join('|'))
+  );
 }

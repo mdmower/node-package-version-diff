@@ -2,7 +2,7 @@ import {mkdir, readFile, rm, writeFile} from 'node:fs/promises';
 import {DependencyType, dependencyTypes, Options} from './options.js';
 import util from 'node:util';
 import {exec} from 'node:child_process';
-import {isNpmLockFileV3, NpmLockFileV3} from './utils.js';
+import {isNpmLockFile, NpmLockFile} from './utils.js';
 import {lockfileWalker, LockfileWalkerStep} from '@pnpm/lockfile.walker';
 import {LockfileObject, readWantedLockfile} from '@pnpm/lockfile.fs';
 import {
@@ -72,15 +72,11 @@ async function readLockFiles(from: string, to: string, {mode, git, gitLockFile}:
   return [fromDoc, toDoc];
 }
 
-function diffNpmLockFileV3(
-  from: NpmLockFileV3,
-  to: NpmLockFileV3,
-  options: Options
-): ConsolidatedDiff {
+function diffNpmLockFile(from: NpmLockFile, to: NpmLockFile, options: Options): ConsolidatedDiff {
   const {directOnly} = options;
   const includeTypes = filterTypes(options);
 
-  const readVersions = (lockFile: NpmLockFileV3) => {
+  const readVersions = (lockFile: NpmLockFile) => {
     const {'': thisPackage, ...otherPackages} = lockFile.packages;
     const directDependencyNames = [
       ...(thisPackage.dependencies ? Object.entries(thisPackage.dependencies) : []),
@@ -89,31 +85,42 @@ function diffNpmLockFileV3(
       ...(thisPackage.peerDependencies ? Object.entries(thisPackage.peerDependencies) : []),
     ].map(([name]) => `node_modules/${name}`);
 
-    const otherEntries = Object.entries(otherPackages);
-    const filteredEntries = otherEntries.filter(([name, entry]) => {
-      if (!entry) return false;
+    return Object.entries(otherPackages)
+      .map(([name, entry]) => {
+        if (!entry) return;
+        if ('link' in entry) {
+          // https://docs.npmjs.com/cli/v7/configuring-npm/package-lock-json#packages
+          // "If this is present, no other fields are specified, since the link target will also be
+          // included in the lockfile."
+          return;
+        }
 
-      const {dev, optional, peer} = entry;
-      const types: DependencyType[] = [];
-      if (!dev && !optional && !peer) types.push('prod');
-      if (dev) types.push('dev');
-      if (optional) types.push('optional');
-      if (peer) types.push('peer');
+        const {dev, optional, peer} = entry;
+        const types: DependencyType[] = [];
+        if (!dev && !optional && !peer) types.push('prod');
+        if (dev) types.push('dev');
+        if (optional) types.push('optional');
+        if (peer) types.push('peer');
 
-      return (
-        types.some((type) => includeTypes.includes(type)) &&
-        (!directOnly || directDependencyNames.includes(name))
-      );
-    });
+        if (
+          !types.some((type) => includeTypes.includes(type)) ||
+          (directOnly && !directDependencyNames.includes(name))
+        ) {
+          return;
+        }
 
-    return filteredEntries.map(([dir, details]) => {
-      const path = dir.split(/\/?node_modules\//).slice(1);
-      return {
-        path,
-        name: path[path.length - 1],
-        version: details?.version ?? '',
-      };
-    });
+        // Workspace packages (and other linked packages) do not start with node_modules/
+        if (name.startsWith('node_modules/')) {
+          name = name.replace('node_modules/', '');
+        }
+        const path = name.split('/node_modules/');
+        return {
+          path,
+          name: path[path.length - 1],
+          version: entry?.version ?? '',
+        };
+      })
+      .filter((pkg) => !!pkg);
   };
 
   return {
@@ -183,14 +190,14 @@ export async function diffPackages(
   if (mode === 'npm') {
     const fromJson = JSON.parse(fromDoc) as unknown;
     const toJson = JSON.parse(toDoc) as unknown;
-    if (!isNpmLockFileV3(fromJson)) {
-      throw new Error("Could not parse 'from' npm package lock file");
+    if (!isNpmLockFile(fromJson)) {
+      throw new Error("'from' is not a supported v2 or v3 NPM lock file");
     }
-    if (!isNpmLockFileV3(toJson)) {
-      throw new Error("Could not parse 'to' npm package lock file");
+    if (!isNpmLockFile(toJson)) {
+      throw new Error("'to' is not a supported v2 or v3 NPM lock file");
     }
 
-    diff = diffNpmLockFileV3(fromJson, toJson, options);
+    diff = diffNpmLockFile(fromJson, toJson, options);
   } else if (mode === 'pnpm') {
     // readWantedLockfile() expects a directory containing pnpm-lock.yaml
     const tmp = await mkdtemp(pathJoin(tmpdir(), 'npvd-'));

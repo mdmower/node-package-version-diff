@@ -11,7 +11,7 @@ export function isFormat(val: unknown): val is Format {
   return typeof val === 'string' && (formats as readonly string[]).includes(val);
 }
 
-export interface NpmLockFileV3 {
+export interface NpmLockFile {
   lockfileVersion: number;
   packages: {
     '': {
@@ -25,6 +25,9 @@ export interface NpmLockFileV3 {
     [key: string]:
       | undefined
       | {
+          link: boolean;
+        }
+      | {
           version: string;
           dev?: boolean;
           optional?: boolean;
@@ -33,8 +36,9 @@ export interface NpmLockFileV3 {
   };
 }
 
-export function isNpmLockFileV3(val: unknown): val is NpmLockFileV3 {
-  const base = isRecord(val) && val.lockfileVersion === 3;
+export function isNpmLockFile(val: unknown): val is NpmLockFile {
+  const base =
+    isRecord(val) && typeof val.lockfileVersion == 'number' && [2, 3].includes(val.lockfileVersion);
   if (!base) return false;
 
   const packages = isRecord(val.packages) ? val.packages : undefined;
@@ -61,6 +65,7 @@ export function isNpmLockFileV3(val: unknown): val is NpmLockFileV3 {
   for (const otherPackage of otherPackages) {
     const details = otherPackage[1];
     if (!isRecord(details)) return false;
+    if (details.link === true) continue;
     if (typeof details.version !== 'string') return false;
     if (details.dev !== undefined && typeof details.dev !== 'boolean') return false;
     if (details.optional !== undefined && typeof details.optional !== 'boolean') return false;

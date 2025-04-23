@@ -6,6 +6,7 @@
     "target": "ES2022",
     "strict": true,
     "esModuleInterop": true,
+    "resolveJsonModule": true,
     "outDir": "dist",
     "sourceMap": false,
     "declaration": true

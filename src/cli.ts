@@ -15,6 +15,7 @@ import {formats, isFormat} from './utils.js';
 import path from 'node:path';
 import {existsSync} from 'node:fs';
 import {writeFile} from 'node:fs/promises';
+import packageJson from '../package.json' with {type: 'json'};
 
 async function run() {
   program
@@ -31,6 +32,7 @@ async function run() {
     .option('--json-spaces <num>', 'Number of spaces to use for indentated JSON output', parseInt)
     .option('--eol <eol>', 'End of line to use for file output (LF, CRLF)', 'LF')
     .option('--out-file <path>', 'File path including file name where output should be written')
+    .version(packageJson.version, '-v, --version')
     .parse();
 
   const options: Options = {mode: 'npm'};

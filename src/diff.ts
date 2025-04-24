@@ -79,10 +79,18 @@ function diffNpmLockFile(from: NpmLockFile, to: NpmLockFile, options: Options): 
   const readVersions = (lockFile: NpmLockFile) => {
     const {'': thisPackage, ...otherPackages} = lockFile.packages;
     const directDependencyNames = [
-      ...(thisPackage.dependencies ? Object.entries(thisPackage.dependencies) : []),
-      ...(thisPackage.devDependencies ? Object.entries(thisPackage.devDependencies) : []),
-      ...(thisPackage.optionalDependencies ? Object.entries(thisPackage.optionalDependencies) : []),
-      ...(thisPackage.peerDependencies ? Object.entries(thisPackage.peerDependencies) : []),
+      ...(includeTypes.includes('prod') && thisPackage.dependencies
+        ? Object.entries(thisPackage.dependencies)
+        : []),
+      ...(includeTypes.includes('dev') && thisPackage.devDependencies
+        ? Object.entries(thisPackage.devDependencies)
+        : []),
+      ...(includeTypes.includes('optional') && thisPackage.optionalDependencies
+        ? Object.entries(thisPackage.optionalDependencies)
+        : []),
+      ...(includeTypes.includes('peer') && thisPackage.peerDependencies
+        ? Object.entries(thisPackage.peerDependencies)
+        : []),
     ].map(([name]) => `node_modules/${name}`);
 
     return Object.entries(otherPackages)
